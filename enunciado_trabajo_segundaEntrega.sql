@@ -58,7 +58,30 @@ create or replace procedure registrar_pedido(
     arg_id_primer_plato INTEGER DEFAULT NULL,
     arg_id_segundo_plato INTEGER DEFAULT NULL
 ) is 
+ -- se supone que antes del begin hay que fabricarse los posibles errores
+ -- supongo que por asignación, hay que hacer := 
+ err_pedido_inexistente const char := "no existe el plato seleccionado";
+ err_personal_ocupado const char := "personal seleccionado ocupado en estos momentos";
+ err_no_plato_seleccionado const char := "el pedido debe tener al menos un plato";
+ err_max_pedidos const char := "el personal de servicios tiene demasiados pedidos";
+ err_primero_inexistente const char := "primer plato seleccionado no existe";
+ err_segundo_inexistente const char  := "segundo plato seleccionado no existe";
  begin
+   -- compruebo las excepciones del primero y segundo
+   if arg_id_primer_plato is null 
+   then
+   raise_application_error(-20004,err_primero_inexistente);
+   end if;
+   if arg_id_segundo_plato is null 
+   then
+   raise_application_error(-20004,err_segundo_insexistente);
+   end if;
+   
+   if arg_id_primer_plato  and arg_id_segundo_plato is null 
+   then
+   raise_application_error(-20001,err_pedido_inexistente);
+   end if;
+   
   null; -- sustituye esta línea por tu código
 end;
 /
@@ -97,7 +120,7 @@ begin
 end;
 /
 
-
+-- hay que crear el archivo para los tests
 create or replace procedure inicializa_test is
 begin
     
@@ -130,8 +153,8 @@ exec inicializa_test;
 -- Completa lost test, incluyendo al menos los del enunciado y añadiendo los que consideres necesarios
 
 create or replace procedure test_registrar_pedido is
-begin
-	 
+ begin
+    
   --caso 1 Pedido correct, se realiza
   begin
     inicializa_test;
