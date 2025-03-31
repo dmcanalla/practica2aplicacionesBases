@@ -101,12 +101,18 @@ begin
     CLOSE c_plato1_disponible;
     CLOSE c_plato2_disponible;
 
-    SELECT pedidos_activos from personal_servicio
-    into v_pedidos_acticos
-    WHERE id_personal = arg_id_personal;
-    if (v_pedidos_acticos >= 5) then
-        raise_application_error(-20003, err_max_pedidos)
+   declare 
+v_pedidos_activos integer (10);
+begin
+    SELECT pedidos_activos 
+     into v_pedidos_activos 
+    from personal_servicio
+    where id_personal = arg_id_personal;
+    end;
+    if (v_pedidos_activos >= 5) then
+        raise_application_error(-20003, err_max_pedidos);
     end if;
+
 
     null; -- sustituye esta línea por tu código
 end;
