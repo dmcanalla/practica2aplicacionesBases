@@ -106,6 +106,7 @@ begin
     
 declare 
 v_pedidos_activos integer (10);
+
 begin
     SELECT pedidos_activos 
      into v_pedidos_activos 
@@ -117,23 +118,25 @@ begin
     end if;
 end;
 
+
 -- añadir pedido. 
 -- pedido depende de: personal, platos, pedido, detalles, registro
     
-    declare
-    personal_activo varchar (10);
-    precio_total int;
+   
+    
     begin 
     -- recojo el id de cualquier posible camarero activo con menos de 5 pedidos en ese momento
-     select any id_personal into personal_activo 
-     from personal_servicio
-     where pedidos_activos <5;
-     
      -- recojo el precio total en función a la cantidad de pedidos+
      -- no tengo ni idea de donde sale el total
     insert into pedidos (id_pedido,id_cliente,id_personal,fecha,total)
- values (id_pedido.nextval,id_cliente.curval,id_personal_activo,current_date,precio_total);
- end;
+ values (id_pedido.nextval,arg_id_cliente,arg_id_personal,current_date,precio_total);
+ -- detalles de pedido
+  
+ -- actualizo la tabla de pedidos
+  update personal_servicio set pedidos_activos= pedidos_activos+1
+  where id_personal = arg_id_personal;
+ end ;
+ 
 /
 
 ------ Deja aquí tus respuestas a las preguntas del enunciado:
@@ -155,6 +158,7 @@ procedure reset_seq( p_seq_name varchar )
 is
     l_val number;
 begin
+
     execute immediate
     'select ' || p_seq_name || '.nextval from dual' INTO l_val;
 
