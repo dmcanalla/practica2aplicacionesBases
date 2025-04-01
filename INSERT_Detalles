@@ -1,0 +1,116 @@
+create or replace procedure registrar_pedido(
+    arg_id_cliente      INTEGER, 
+    arg_id_personal     INTEGER, 
+    arg_id_primer_plato INTEGER DEFAULT NULL,
+    arg_id_segundo_plato INTEGER DEFAULT NULL
+) is 
+ -- se supone que antes del begin hay que fabricarse los posibles errores
+ -- supongo que por asignación, hay que hacer := 
+    err_pedido_inexistente constant char := 'no existe el plato seleccionado';
+    err_personal_ocupado constant char := 'personal seleccionado ocupado en estos momentos';
+    err_no_plato_seleccionado constant char := 'el pedido debe tener al menos un plato';
+    err_max_pedidos constant char := 'el personal de servicios tiene demasiados pedidos';
+    err_primero_inexistente constant char := 'primer plato seleccionado no existe';
+    err_segundo_inexistente constant char  := 'segundo plato seleccionado no existe';
+    err_plato_no_disponible constant char := 'alguno de los platos no está disponible';
+    
+    CURSOR c_plato1 IS
+        SELECT ID_PLATO ,
+                PRECIO ,
+                DISPONIBLE
+        FROM platos
+        WHERE id_plato = arg_id_primer_plato;
+    CURSOR c_plato2 IS
+        SELECT ID_PLATO ,
+                PRECIO ,
+                DISPONIBLE
+        FROM platos
+        WHERE id_plato = arg_id_segundo_plato;
+begin
+
+    -- compruebo las excepciones del primero y segundo
+    if arg_id_primer_plato is null and arg_id_segundo_plato is null then
+        raise_application_error(-20002, err_no_plato_seleccionado);
+    end if;
+    
+    OPEN c_plato1;
+    OPEN c_plato2;
+    if arg_id_primer_plato is not null and not c_plato1%FOUND
+    then
+        raise_application_error(-20004, err_primero_inexistente);
+    end if;
+
+    if arg_id_segundo_plato is not null and not c_plato2%FOUND
+    then
+        raise_application_error(-20004, err_segundo_inexistente);
+    end if;
+    
+    declare 
+        v_plato1_id INTEGER;
+        v_plato2_id INTEGER;
+    
+        v_plato1_precio DECIMAL(10, 2);
+        v_plato2_precio DECIMAL(10, 2);
+        
+        v_plato1_disponible integer;
+        v_plato2_disponible integer;
+    begin
+        fetch c_plato1 into v_plato1_id, v_plato1_precio, v_plato1_disponible;
+        fetch c_plato2 into v_plato2_id, v_plato2_precio, v_plato2_disponible;
+    
+        if v_plato1_disponible = 0 or v_plato2_disponible = 0 then
+            raise_application_error(-20001, err_plato_no_disponible);
+        end if;
+    end;
+    CLOSE c_plato1;
+    CLOSE c_plato2;
+    
+    declare 
+    v_pedidos_activos integer (10);
+    begin
+        select pedidos_activos 
+        into v_pedidos_activos 
+        from personal_servicio
+        where id_personal = arg_id_personal;
+        if v_pedidos_activos >= 5 then
+            raise_application_error(-20003, err_max_pedidos);
+        end if;
+    end;
+
+    --calculo el total
+    declare
+        precio_total int;
+    begin 
+        SELECT SUM(precio)
+        INTO precio_total
+        FROM platos
+        WHERE id_plato IN (arg_id_primer_plato, arg_id_segundo_plato);
+        
+        insert into pedidos (id_pedido, id_cliente, id_personal, fecha_pedido, total)
+        values (seq_pedidos.NEXTVAL, arg_id_cliente, arg_id_personal, CURRENT_DATE, precio_total);
+    end;
+    
+    -- añadir pedido. 
+    -- pedido depende de: personal, platos, pedido, detalles, registro
+     -- actualizo la tabla de pedidos
+    
+    IF arg_id_primer_plato = arg_id_segundo_plato THEN
+        INSERT INTO detalle_pedido 
+            (id_pedido, id_plato, cantidad)
+        VALUES
+            (seq_pedidos.CURRVAL, arg_id_primer_plato, 2);
+    ELSE
+        INSERT INTO detalle_pedido
+            (id_pedido, id_plato, cantidad)
+        VALUES 
+            (seq_pedidos.CURRVAL, arg_id_primer_plato, 1);
+            
+        INSERT INTO detalle_pedido
+            (id_pedido, id_plato, cantidad)
+        VALUES (seq_pedidos.CURRVAL, arg_id_primer_plato, 2);
+    END IF;
+    
+    UPDATE personal_servicio SET pedidos_activos = pedidos_activos + 1
+    WHERE id_personal = arg_id_personal;
+ end;
+/
